@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "AI Training Platform"
+description = "A focused learning platform for building practical AI skills through structured courses, guided lessons, progress tracking, and interactive practice with an AI coach."
+version = "1.0.0"
+id = "artifacts/ai-training-platform"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22466
+
+[services.development]
+run = "pnpm --filter @workspace/ai-training-platform run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ai-training-platform", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ai-training-platform/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22466"
+BASE_PATH = "/"

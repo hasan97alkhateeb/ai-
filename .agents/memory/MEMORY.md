@@ -1,0 +1,6 @@
+- [Quota test fixtures](quota-test-fixtures.md) — use isolated learner rows and clean them up; don't change shared database schema just to support tests.
+- [Coaching recovery safety](coaching-recovery-safety.md) — durable leases favor returning an error over delivering feedback whose usage might later be refunded.
+- [Coaching maintenance heartbeat](coaching-maintenance-heartbeat.md) — persist maintenance success timestamps with their work so restart-time warnings use durable state.
+- [Subscription recovery rollout](subscription-recovery-rollout.md) — live provider corroboration supplements human ownership evidence; fixture success is not approval to remove manual checks.
+- [Recovery freshness budget](recovery-freshness.md) — recovery freshness includes lock reacquisition; usage remains live rather than part of the approval snapshot.
+- [Practice browser auth boundary](practice-browser-auth-boundary.md) — CI uses test-only Clerk identity injection; it checks learner isolation, not Clerk token verification.

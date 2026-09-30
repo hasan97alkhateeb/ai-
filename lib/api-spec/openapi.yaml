@@ -1,0 +1,677 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: learning
+    description: Courses and progress
+  - name: dashboard
+    description: Learner dashboard
+  - name: practice
+    description: AI practice coaching
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get learner dashboard
+      description: Returns the current learner's overview, active courses, and learning stats
+      responses:
+        "200":
+          description: Dashboard overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /courses:
+    get:
+      operationId: listCourses
+      tags: [learning]
+      summary: List available courses
+      description: Returns courses available to the current learner
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Course list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+  /courses/{courseId}:
+    get:
+      operationId: getCourse
+      tags: [learning]
+      summary: Get a course
+      description: Returns a course and its lessons
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Course detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDetail"
+        "404":
+          description: Course not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /activity:
+    get:
+      operationId: listActivity
+      tags: [dashboard]
+      summary: List recent learning activity
+      description: Returns recent milestones and learning events
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+  /courses/{courseId}/progress:
+    post:
+      operationId: updateCourseProgress
+      tags: [learning]
+      summary: Update lesson progress
+      description: Marks a lesson complete or incomplete for the current learner
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgressUpdate"
+      responses:
+        "200":
+          description: Updated course progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Progress"
+        "404":
+          description: Course or lesson not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /practice/questions:
+    get:
+      operationId: listPracticeQuestions
+      tags: [practice]
+      summary: Get practice questions
+      description: Returns a short set of AI skill practice questions
+      parameters:
+        - name: skill
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Practice questions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PracticeQuestion"
+  /practice/recommendation:
+    get:
+      operationId: getPracticeRecommendation
+      tags: [practice]
+      summary: Get the next adaptive practice question
+      description: Selects a question for the signed-in learner using recent practice outcomes.
+      parameters:
+        - name: excludeQuestionIds
+          in: query
+          required: false
+          schema:
+            type: array
+            maxItems: 20
+            items:
+              type: string
+      responses:
+        "200":
+          description: Recommended question and learning focus
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeRecommendation"
+        "401":
+          description: Learner must sign in before receiving a recommendation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Existing anonymous subscription cannot be merged automatically
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Invalid excluded question list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: No questions are available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /practice/history:
+    get:
+      operationId: getPracticeHistory
+      tags: [practice]
+      summary: Get recent practice history
+      description: Returns the signed-in learner's recent answers and skill progress.
+      responses:
+        "200":
+          description: Recent attempts and per-skill performance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeHistory"
+        "401":
+          description: Learner must sign in before viewing practice history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Existing anonymous subscription cannot be merged automatically
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /practice/usage:
+    get:
+      operationId: getPracticeUsage
+      tags: [practice]
+      summary: Get monthly AI coaching usage
+      description: Returns the current learner's plan and monthly AI coaching allowance
+      responses:
+        "200":
+          description: Current coaching usage and plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeUsage"
+        "401":
+          description: Learner must sign in before using coaching
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Existing anonymous subscription cannot be merged automatically
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /practice/checkout:
+    post:
+      operationId: createPracticeProCheckout
+      tags: [practice]
+      summary: Create a hosted Pro checkout
+      description: Creates a Whop-hosted checkout for the current learner. Pro access is applied only after a verified provider event.
+      responses:
+        "200":
+          description: Hosted checkout URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeProCheckout"
+        "400":
+          description: Invalid practice-page return URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: A Pro subscription is already associated with this learner or account linking needs support
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Learner must sign in before starting checkout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Hosted checkout has not been configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Unable to create a checkout with the configured provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /practice/attempts:
+    post:
+      operationId: submitPracticeAttempt
+      tags: [practice]
+      summary: Submit a practice attempt
+      description: Evaluates a learner's answer and returns coaching feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PracticeAttemptInput"
+      responses:
+        "200":
+          description: Practice feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PracticeAttempt"
+        "401":
+          description: Learner must sign in before submitting a practice attempt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Existing anonymous subscription cannot be merged automatically
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Monthly AI coaching allowance reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachingLimitReached"
+        "404":
+          description: Practice question not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    Dashboard:
+      type: object
+      required: [learner, stats, inProgress, recommendedCourseId]
+      properties:
+        learner:
+          $ref: "#/components/schemas/Learner"
+        stats:
+          $ref: "#/components/schemas/LearningStats"
+        inProgress:
+          type: array
+          items:
+            $ref: "#/components/schemas/Course"
+        recommendedCourseId:
+          type: string
+    Learner:
+      type: object
+      required: [name, role, level, xp, streakDays]
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        level:
+          type: string
+        xp:
+          type: integer
+        streakDays:
+          type: integer
+    LearningStats:
+      type: object
+      required: [weeklyMinutes, completedLessons, totalLessons, completionPercent]
+      properties:
+        weeklyMinutes:
+          type: integer
+        completedLessons:
+          type: integer
+        totalLessons:
+          type: integer
+        completionPercent:
+          type: integer
+    Course:
+      type: object
+      required: [id, title, subtitle, description, level, category, durationMinutes, lessonCount, completedLessons, progressPercent, accent, icon, tags]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        subtitle:
+          type: string
+        description:
+          type: string
+        level:
+          type: string
+        category:
+          type: string
+        durationMinutes:
+          type: integer
+        lessonCount:
+          type: integer
+        completedLessons:
+          type: integer
+        progressPercent:
+          type: integer
+        accent:
+          type: string
+        icon:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+    CourseDetail:
+      allOf:
+        - $ref: "#/components/schemas/Course"
+        - type: object
+          required: [lessons]
+          properties:
+            lessons:
+              type: array
+              items:
+                $ref: "#/components/schemas/Lesson"
+    Lesson:
+      type: object
+      required: [id, courseId, title, description, durationMinutes, type, order, completed]
+      properties:
+        id:
+          type: string
+        courseId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        durationMinutes:
+          type: integer
+        type:
+          type: string
+        order:
+          type: integer
+        completed:
+          type: boolean
+    Progress:
+      type: object
+      required: [courseId, completedLessons, lessonCount, progressPercent]
+      properties:
+        courseId:
+          type: string
+        completedLessons:
+          type: integer
+        lessonCount:
+          type: integer
+        progressPercent:
+          type: integer
+    ProgressUpdate:
+      type: object
+      required: [lessonId, completed]
+      properties:
+        lessonId:
+          type: string
+        completed:
+          type: boolean
+    Activity:
+      type: object
+      required: [id, title, description, type, createdAt]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+        courseId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+    PracticeQuestion:
+      type: object
+      required: [id, prompt, context, options, skill, difficulty]
+      properties:
+        id:
+          type: string
+        prompt:
+          type: string
+        context:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        skill:
+          type: string
+        difficulty:
+          type: string
+    PracticeAttemptInput:
+      type: object
+      required: [questionId, answer]
+      properties:
+        questionId:
+          type: string
+        answer:
+          type: string
+    PracticeAttempt:
+      type: object
+      required: [questionId, correct, answer, correctAnswer, feedback, pointsEarned, usage]
+      properties:
+        questionId:
+          type: string
+        correct:
+          type: boolean
+        answer:
+          type: string
+        correctAnswer:
+          type: string
+        feedback:
+          type: string
+        pointsEarned:
+          type: integer
+        usage:
+          $ref: "#/components/schemas/PracticeUsage"
+    PracticeAttemptHistoryItem:
+      type: object
+      required: [attemptId, questionId, prompt, skill, difficulty, answer, correctAnswer, correct, feedback, pointsEarned, createdAt]
+      properties:
+        attemptId:
+          type: string
+        questionId:
+          type: string
+        prompt:
+          type: string
+        skill:
+          type: string
+        difficulty:
+          type: string
+        answer:
+          type: string
+        correctAnswer:
+          type: string
+        correct:
+          type: boolean
+        feedback:
+          type: string
+        pointsEarned:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    PracticeSkillProgress:
+      type: object
+      required: [skill, recentAttempts, correctAttempts, accuracyPercent, nextDifficulty]
+      properties:
+        skill:
+          type: string
+        recentAttempts:
+          type: integer
+          minimum: 0
+        correctAttempts:
+          type: integer
+          minimum: 0
+        accuracyPercent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        nextDifficulty:
+          type: string
+    PracticeHistory:
+      type: object
+      required: [attempts, skillProgress]
+      properties:
+        attempts:
+          type: array
+          items:
+            $ref: "#/components/schemas/PracticeAttemptHistoryItem"
+        skillProgress:
+          type: array
+          items:
+            $ref: "#/components/schemas/PracticeSkillProgress"
+    PracticeRecommendation:
+      type: object
+      required: [question, focusSkill, difficulty, reason]
+      properties:
+        question:
+          $ref: "#/components/schemas/PracticeQuestion"
+        focusSkill:
+          type: string
+        difficulty:
+          type: string
+        reason:
+          type: string
+    PracticeUsage:
+      type: object
+      required: [learnerId, plan, used, monthlyLimit, remaining, resetsAt, upgradeUrl, checkoutAvailable, subscriptionStatus, subscriptionPeriodEndsAt, subscriptionManagementUrl, paymentRecoveryUrl]
+      properties:
+        learnerId:
+          type: string
+          format: uuid
+        plan:
+          type: string
+          enum: [free, pro]
+        used:
+          type: integer
+          minimum: 0
+        monthlyLimit:
+          type: integer
+          minimum: 1
+        remaining:
+          type: integer
+          minimum: 0
+        resetsAt:
+          type: string
+          format: date-time
+        upgradeUrl:
+          type: ["string", "null"]
+          format: uri
+        checkoutAvailable:
+          type: boolean
+        subscriptionStatus:
+          type: ["string", "null"]
+          enum: [active, canceling, past_due, canceled, expired, null]
+        subscriptionPeriodEndsAt:
+          type: ["string", "null"]
+          format: date-time
+        subscriptionManagementUrl:
+          type: ["string", "null"]
+          format: uri
+        paymentRecoveryUrl:
+          type: ["string", "null"]
+          format: uri
+    PracticeProCheckout:
+      type: object
+      required: [purchaseUrl]
+      properties:
+        purchaseUrl:
+          type: string
+          format: uri
+    CoachingLimitReached:
+      type: object
+      required: [error, usage]
+      properties:
+        error:
+          type: string
+        usage:
+          $ref: "#/components/schemas/PracticeUsage"
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          description: Stable machine-readable error identifier
+        conflictId:
+          type: string
+          description: Support reference for a subscription linking conflict
+        status:
+          type: string
+          enum: [pending_review]
+          description: Linking is paused until support verifies membership ownership
+
