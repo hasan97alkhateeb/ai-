@@ -41,10 +41,14 @@ jobs:
           echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
 
       - name: Install Chromium for browser checks
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
         run: pnpm --filter @workspace/api-server exec playwright install --with-deps chromium
 
       - name: Run isolated API and database-runner tests
         shell: bash
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
         run: |
           # Hosted runners execute as a non-root user; never sudo the tests.
           test "$(id -u)" -ne 0
@@ -55,7 +59,7 @@ jobs:
           # Allowlist only runtime essentials, including a fresh HOME so neither
           # command can read inherited database/provider credentials or config.
           # Run both suites even if the first fails, preserving a failed check.
-          env -i PATH="$PATH" HOME="$test_home" LC_ALL=C NODE_ENV=test bash --noprofile --norc -c '
+          env -i PATH="$PATH" HOME="$test_home" LC_ALL=C NODE_ENV=test PLAYWRIGHT_BROWSERS_PATH="$PLAYWRIGHT_BROWSERS_PATH" bash --noprofile --norc -c '
             pnpm --filter @workspace/api-server test
             api_status=$?
             pnpm --filter @workspace/api-server test:database-runner
@@ -63,7 +67,3 @@ jobs:
             printf "API suite exit: %s; database runner exit: %s\n" "$api_status" "$runner_status"
             test "$api_status" -eq 0 && test "$runner_status" -eq 0
           '
-           trap 'rm -rf "$test_home"' EXIT
-           playwright_browsers_path="$HOME/.cache/ms-playwright"
-           env -i PATH="$PATH" HOME="$test_home" LC_ALL=C NODE_ENV=test 
-           PLAYWRIGHT_BROWSERS_PATH="$playwright_browsers_path" bash --noprofile --norc -c '
