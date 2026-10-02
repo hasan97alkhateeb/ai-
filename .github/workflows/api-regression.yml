@@ -63,3 +63,7 @@ jobs:
             printf "API suite exit: %s; database runner exit: %s\n" "$api_status" "$runner_status"
             test "$api_status" -eq 0 && test "$runner_status" -eq 0
           '
+           trap 'rm -rf "$test_home"' EXIT
+           playwright_browsers_path="$HOME/.cache/ms-playwright"
+           env -i PATH="$PATH" HOME="$test_home" LC_ALL=C NODE_ENV=test 
+           PLAYWRIGHT_BROWSERS_PATH="$playwright_browsers_path" bash --noprofile --norc -c '
