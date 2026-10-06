@@ -1,0 +1,75 @@
+name: API regression
+
+on:
+  pull_request:
+  push:
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-regression:
+    name: API regression tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Check GitHub Actions are pinned to reviewed versions
+        run: node scripts/check-github-action-pins.mjs
+
+      - name: Test GitHub Actions pin guard
+        run: node --test scripts/check-github-action-pins.test.mjs
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: 10.26.1
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck the workspace
+        run: pnpm run typecheck
+
+      - name: Install PostgreSQL 16 tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+
+      - name: Install Chromium for browser checks
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
+        run: pnpm --filter @workspace/api-server exec playwright install --with-deps chromium
+
+      - name: Run isolated API and database-runner tests
+        shell: bash
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/ms-playwright
+        run: |
+          # Hosted runners execute as a non-root user; never sudo the tests.
+          test "$(id -u)" -ne 0
+          initdb --version
+          pg_ctl --version
+          test_home="$(mktemp -d)"
+          trap 'rm -rf "$test_home"' EXIT
+          # Allowlist only runtime essentials, including a fresh HOME so neither
+          # command can read inherited database/provider credentials or config.
+          # Run both suites even if the first fails, preserving a failed check.
+          env -i PATH="$PATH" HOME="$test_home" LC_ALL=C NODE_ENV=test PLAYWRIGHT_BROWSERS_PATH="$PLAYWRIGHT_BROWSERS_PATH" bash --noprofile --norc -c '
+            pnpm --filter @workspace/api-server test
+            api_status=$?
+            pnpm --filter @workspace/api-server test:database-runner
+            runner_status=$?
+            printf "API suite exit: %s; database runner exit: %s\n" "$api_status" "$runner_status"
+            test "$api_status" -eq 0 && test "$runner_status" -eq 0
+          '
